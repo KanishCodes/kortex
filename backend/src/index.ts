@@ -18,7 +18,7 @@ app.use(cors({
     'http://localhost:3000',
     'https://kortex-frontend.vercel.app', // Production frontend
     process.env.FRONTEND_URL
-  ].filter(Boolean),
+  ].filter(Boolean) as string[],
   credentials: true,
 }));
 app.use(express.json());
