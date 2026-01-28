@@ -16,7 +16,7 @@ const PORT = process.env.PORT || 4000;
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    'https://kortex-frontend.vercel.app', // Production frontend
+    'https://kortex-by-kanish.vercel.app',
     process.env.FRONTEND_URL
   ].filter(Boolean) as string[],
   credentials: true,
