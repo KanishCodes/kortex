@@ -54,7 +54,7 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
 
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account: _account }) {
       // First time jwt callback is run, user object is available
       if (user) {
         token.dbId = (user as any).dbId;
