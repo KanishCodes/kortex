@@ -139,7 +139,7 @@ export async function uploadDocument(
  * Send a chat message and get RAG-powered response
  */
 export async function chat(
-  userId: string,
+  _userId: string,
   subjectId: string,
   message: string
 ): Promise<ChatResponse> {
