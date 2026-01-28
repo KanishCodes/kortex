@@ -115,7 +115,7 @@ export async function uploadDocument(
   userId: string,
   subjectId: string,
   file: File,
-  onProgress?: (progress: number) => void
+  _onProgress?: (progress: number) => void
 ): Promise<UploadResponse> {
   const formData = new FormData();
   formData.append('file', file);
