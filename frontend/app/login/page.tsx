@@ -4,8 +4,9 @@
 import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { FileText, Sparkles, Zap } from 'lucide-react';
+import { Suspense } from 'react';
 
-export default function LoginPage() {
+function LoginContent() {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams?.get('callbackUrl') || '/dashboard';
 
@@ -28,28 +29,28 @@ export default function LoginPage() {
 
         {/* Features */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-8 mb-6">
-          <div className="space-y-4 mb-8">
+          <div className="space-y-6 mb-8">
             <Feature
-              icon={<FileText className="w-5 h-5" />}
-              title="Upload Documents"
-              description="Add your PDFs and study materials"
+              icon={<FileText className="w-5 h-5 text-purple-600" />}
+              title="Upload PDFs"
+              description="Transform your study materials into intelligent knowledge bases"
             />
             <Feature
-              icon={<Sparkles className="w-5 h-5" />}
-              title="AI-Powered Answers"
-              description="Get instant answers from your documents"
+              icon={<Sparkles className="w-5 h-5 text-purple-600" />}
+              title="AI-Powered Chat"
+              description="Ask questions and get instant answers from your documents"
             />
             <Feature
-              icon={<Zap className="w-5 h-5" />}
-              title="Smart RAG System"
-              description="Context-aware responses with source citations"
+              icon={<Zap className="w-5 h-5 text-purple-600" />}
+              title="Smart Organization"
+              description="Manage multiple subjects with ease"
             />
           </div>
 
-          {/* Sign In Button */}
+          {/* Google Sign In Button */}
           <button
             onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white dark:bg-gray-900 border-2 border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all shadow-sm hover:shadow-md"
+            className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-650 transition-all shadow-sm hover:shadow-md group"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -69,37 +70,33 @@ export default function LoginPage() {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            <span className="font-medium text-gray-700 dark:text-gray-300">
+            <span className="text-gray-700 dark:text-gray-200 font-medium">
               Continue with Google
             </span>
           </button>
-
-          <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-4">
-            By signing in, you agree to use KORTEX for educational purposes
-          </p>
         </div>
 
         {/* Footer */}
-        <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-          Powered by RAG • Built with Next.js
+        <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+          Access your personalized study materials anywhere
         </p>
       </div>
     </div>
   );
 }
 
-function Feature({
-  icon,
-  title,
-  description,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
-}) {
+export default function LoginPage() {
   return (
-    <div className="flex items-start gap-3">
-      <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-lg text-purple-600 dark:text-purple-400">
+    <Suspense fallback={<div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-950 dark:to-gray-900" />}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function Feature({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="flex gap-4">
+      <div className="flex-shrink-0 w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
         {icon}
       </div>
       <div>
