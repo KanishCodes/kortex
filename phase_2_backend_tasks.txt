@@ -1,0 +1,68 @@
+# KORTEX PHASE 2: BACKEND INFRASTRUCTURE & WIRING
+# TARGET: backend/ folder + Supabase Dashboard
+# GOAL: Initialize the Database and create the "Service Layer" that talks to AI APIs.
+
+0️⃣ STEP 0: SUPABASE SETUP (EXTERNAL)
+- Action: Go to Supabase.com -> Create New Project "kortex-db".
+- Action: Go to SQL Editor -> New Query.
+- Task: Run the SQL Schema from our Master Plan (Version 4.0).
+  - Enable `vector` extension.
+  - Create `subjects`, `documents`, `chunks` tables.
+  - Create `match_chunks_by_subject` function.
+  - *Verification:* Check that tables exist in the "Table Editor".
+- Action: Get Credentials (Settings -> API).
+  - Copy `Project URL`.
+  - Copy `service_role` secret (Not anon! Backend needs full access).
+
+1️⃣ STEP 1: ENVIRONMENT CONFIGURATION
+- Action: Create `backend/.env` (duplicate .env.example).
+- Content:
+  PORT=4000
+  SUPABASE_URL=...
+  SUPABASE_SERVICE_KEY=...
+  CLOUDFLARE_ACCOUNT_ID=...
+  CLOUDFLARE_API_TOKEN=...
+  GROQ_API_KEY=...
+
+2️⃣ STEP 2: SERVICE LAYER (THE "ADAPTERS")
+Create these files in `backend/src/services/`:
+
+A. `supabase.ts`
+   - Initialize `createClient` using the Service Key.
+   - Export the client instance.
+
+B. `cloudflare.ts` (Embeddings)
+   - Function: `generateEmbedding(text: string): Promise<number[]>`
+   - Implementation: Fetch call to Cloudflare REST API (@cf/baai/bge-base-en-v1.5).
+   - *Senior Detail:* Ensure it handles errors (try/catch) and returns a raw array of 768 floats.
+
+C. `groq.ts` (LLM)
+   - Function: `generateResponse(messages: any[]): Promise<string>`
+   - Implementation: Fetch call to Groq API (llama-3.3-70b).
+   - *Config:* Set `temperature: 0.1` (Strict factual).
+
+3️⃣ STEP 3: API ROUTES (SKELETONS)
+Create these in `backend/src/routes/`:
+
+A. `chat.routes.ts`
+   - Endpoint: `POST /`
+   - logic:
+     1. Receive `{ message, subjectId }`.
+     2. (Mock for now) Call `groq.generateResponse` with just the user message (no RAG yet).
+     3. Return the text.
+
+B. `upload.routes.ts`
+   - Endpoint: `POST /`
+   - Logic: Return `{ success: true, message: "Upload logic coming in Phase 3" }`.
+
+4️⃣ STEP 4: MAIN SERVER ENTRY (`index.ts`)
+- Wire up the routes.
+- Add `express.json()` middleware.
+- Add `cors` middleware (Allow localhost:3000).
+- *Crucial:* Add a simple `GET /health` endpoint that returns `{ status: "ok", env: "bun" }`.
+
+5️⃣ SUCCESS CRITERIA (VERIFICATION)
+- [ ] Supabase tables are created.
+- [ ] Backend starts with `bun run dev` without crashing.
+- [ ] `GET http://localhost:4000/health` returns 200 OK.
+- [ ] (Manual Test) You can run a script that calls `generateEmbedding("Hello")` and logs a 768-length array.

@@ -1,0 +1,63 @@
+# KORTEX PHASE 4: FULL STACK INTEGRATION
+# TARGET: frontend/ & backend/
+# GOAL: Replace all Frontend Mocks with Real API Calls.
+
+0️⃣ PREREQUISITES
+- Ensure Backend is running (`cd backend && bun run dev`).
+- Ensure Frontend is running (`cd frontend && npm run dev`).
+- **Critical:** We will use a hardcoded `DEMO_USER_ID` for now to bypass Auth complexity until Phase 5.
+  - Use the UUID you created in SQL: '550e8400-e29b-41d4-a716-446655440001'
+
+1️⃣ STEP 1: BACKEND GAP FILL (SUBJECTS)
+The dashboard needs to list subjects.
+- Action: Create `backend/src/routes/subject.routes.ts`.
+- Endpoints:
+  1. `GET /` -> Return all subjects for `req.query.userId`.
+     - Query: `select * from subjects where user_id = $1`.
+  2. `POST /` -> Create a new subject.
+     - Body: `{ name, userId }`.
+     - Query: `insert into subjects ... returning *`.
+- Action: Register this route in `backend/src/index.ts` at `/api/subjects`.
+
+2️⃣ STEP 2: FRONTEND API LAYER
+Stop fetching in components. Create a clean API layer.
+- Action: Create `frontend/lib/api.ts`.
+- Config: `const API_URL = "http://localhost:4000/api";`
+- Functions:
+  - `getSubjects(userId: string)`
+  - `createSubject(userId: string, name: string)`
+  - `uploadDocument(userId: string, subjectId: string, file: File)`
+  - `chat(userId: string, subjectId: string, message: string)`
+
+3️⃣ STEP 3: INTEGRATE DASHBOARD (Read/Write)
+- Target: `frontend/app/dashboard/page.tsx`.
+- Logic:
+  - Remove `MOCK_SUBJECTS`.
+  - Add `useEffect` to call `api.getSubjects(DEMO_USER_ID)`.
+  - Wire up "New Subject" button to call `api.createSubject`.
+  - *Verify:* You can create a "Math" subject and see it appear on the grid.
+
+4️⃣ STEP 4: INTEGRATE UPLOAD MODAL (Ingestion)
+- Target: `frontend/components/UploadModal.tsx`.
+- Logic:
+  - On file drop, call `api.uploadDocument`.
+  - **UX:** Show the progress bar! (Since ingestion takes 2-3s).
+  - On success: Show a green checkmark and "Ready to Chat".
+
+5️⃣ STEP 5: INTEGRATE CHAT INTERFACE (The RAG)
+- Target: `frontend/app/dashboard/[subjectId]/page.tsx`.
+- Logic:
+  - Remove `MOCK_CHAT_HISTORY` and `setTimeout` fake delays.
+  - On Send:
+    1. Append User Message (Optimistic UI).
+    2. Show `MessageSkeleton`.
+    3. Call `api.chat(...)`.
+    4. Replace Skeleton with Real AI Response + Real X-Ray Data.
+    5. *Crucial:* Transform the backend `xrayContext` to match the frontend `RetrievedChunk` type if names differ.
+
+6️⃣ SUCCESS CRITERIA
+- [ ] You can open the Dashboard and see subjects loaded from DB.
+- [ ] You can create a new subject "History 101".
+- [ ] You can upload a PDF into "History 101".
+- [ ] You can chat with "History 101" and get an answer based on the PDF.
+- [ ] The "X-Ray Panel" shows *real* text chunks from your PDF.

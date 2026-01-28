@@ -1,0 +1,183 @@
+# PROJECT: KORTEX (AI Study Assistant with Cloud-Native RAG)
+# STATUS: READY FOR DEVELOPMENT
+# VERSION: 4.0 (Production-Ready)
+
+0️⃣ PROJECT VISION
+Build a full-stack AI study assistant that answers questions strictly from user-uploaded documents.
+This system uses "Cloud-Native RAG" to ensure zero local resource strain while maintaining 100% data privacy, distinct subject isolation, and explicit hallucination control.
+
+1️⃣ CORE DIFFERENTIATORS (RESUME VALUE)
+✅ Cloud-Native Embeddings (Cloudflare Workers AI - Batch processing on Edge GPUs)
+✅ Subject-Isolated RAG (Strict SQL-based data boundaries)
+✅ X-Ray Retrieval Toggle (Visualizes the "Black Box" of AI)
+✅ SQL-Based Vector Search (Supabase pgvector with cosine similarity)
+✅ "Frontend-First" Architecture (Mock-driven development)
+
+2️⃣ TECH STACK & INFRASTRUCTURE
+[Frontend]
+- Framework: Next.js 14+ (App Router)
+- Language: TypeScript
+- Styling: Tailwind CSS
+- Auth: NextAuth.js (Google Provider)
+  - Callback: http://localhost:3000/api/auth/callback/google
+
+[Backend]
+- Runtime: Bun (High-performance JS runtime)
+- Server: Express (Explicit separation of concerns)
+- Language: TypeScript
+- PDF Processing: pdf-parse (Reliable text extraction)
+- Security: Backend trusts user identity via NextAuth session/JWT forwarded in Authorization headers.
+
+[AI Infrastructure]
+- Embeddings: Cloudflare Workers AI (REST API)
+  - Model: @cf/baai/bge-base-en-v1.5
+  - Output Dimension: 768
+  - Limit: ~10k Neurons/day free (approx. ample for personal dev usage).
+- LLM Inference: Groq (API)
+  - Model: llama-3.3-70b-versatile (128k context, high reasoning capability)
+  - Fallback: llama-3.1-8b-instant (for lower latency queries)
+- Database: Supabase (PostgreSQL)
+  - Extension: pgvector
+- Deployment:
+  - Frontend: Vercel (Hobby Tier)
+  - Backend: Railway or Render (Free Tier compatible with Bun)
+
+3️⃣ HIGH-LEVEL ARCHITECTURE
+[Ingestion Pipeline]
+PDF Upload → pdf-parse → Smart Chunking (500-700 tokens, 100 overlap) → Batch API Call (Cloudflare) → Store Vectors (Supabase)
+
+[Retrieval Pipeline]
+User Question → API Call (Cloudflare) → Vector Search (Supabase) → Context Window → LLM (Groq) → Response
+
+4️⃣ DOMAIN MODEL & DATA CONTRACT
+
+Entity: User
+- id: UUID
+- email: String
+- preferences: JSON { xrayMode: boolean, crossSubject: boolean }
+
+Entity: Subject
+- id: UUID
+- name: String (e.g., "DSA", "System Design")
+- documentCount: Int
+
+Entity: Chunk (The Core Atom)
+- id: UUID
+- documentId: UUID
+- content: String (500-700 tokens)
+- embedding: Vector(768) (bge-base-en-v1.5 dependent)
+- sourceMeta: JSON { page: 12, chunkIndex: 45, sourceLabel: "Page 12" }
+
+5️⃣ DATABASE SCHEMA (SUPABASE SQL)
+-- Enable Vector Extension
+create extension if not exists vector;
+
+-- Subjects Table (Data Boundary)
+create table subjects (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  name text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- Documents Table
+create table documents (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null,
+  subject_id uuid references subjects(id) on delete cascade,
+  title text not null,
+  created_at timestamp with time zone default timezone('utc'::text, now())
+);
+
+-- Chunks Table
+create table chunks (
+  id uuid primary key default gen_random_uuid(),
+  document_id uuid references documents(id) on delete cascade,
+  user_id uuid not null,
+  subject_id uuid references subjects(id) on delete cascade, -- Critical for filtering
+  content text not null,
+  embedding vector(768), -- Matches @cf/baai/bge-base-en-v1.5
+  metadata jsonb -- { "page": 12, "chunkIndex": 15, "sourceLabel": "Segment 15" }
+);
+
+-- Vector Search Function (Cosine Similarity)
+create or replace function match_chunks_by_subject (
+  query_embedding vector(768),
+  match_threshold float,
+  match_count int,
+  filter_subject uuid
+)
+returns table (
+  id uuid,
+  content text,
+  similarity float,
+  metadata jsonb
+)
+language plpgsql
+as $$
+begin
+  return query
+  select
+    chunks.id,
+    chunks.content,
+    1 - (chunks.embedding <=> query_embedding) as similarity,
+    chunks.metadata
+  from chunks
+  where 1 - (chunks.embedding <=> query_embedding) > match_threshold
+  and chunks.subject_id = filter_subject
+  order by chunks.embedding <=> query_embedding
+  limit match_count;
+end;
+$$;
+
+6️⃣ THE "X-RAY" FEATURE (SPECIFICATION)
+The "X-Ray" toggle is a UI switch that forces the backend to return the raw retrieval context alongside the answer.
+- UI: Accordion component labeled "🔍 Kortex Vision (X-Ray)"
+- Data: Array of { content: string, similarity: 0.92, source: "Page 4" }
+- Purpose: Debugging hallucinations and proving RAG accuracy.
+
+7️⃣ DEVELOPMENT PHASES
+[Phase 1: Frontend First (Mocked)]
+- Build the "Chat Interface" using static mock data.
+- Implement the "X-Ray" UI visualization.
+- Create the "Upload" drag-and-drop zone.
+- *Goal:* A fully clickable UI that looks real but has no backend.
+
+[Phase 2: Cloud-Native Backend]
+- Set up Bun + Express server.
+- Integrate Cloudflare Workers AI REST API for embeddings.
+- Integrate Supabase Client.
+
+[Phase 3: RAG Integration]
+- Implement "Ingestion Service": PDF -> pdf-parse -> Cloudflare -> Supabase.
+- Implement "Query Service": Question -> Cloudflare -> Supabase -> Groq.
+
+[Phase 4: UX Upgrade (Streaming)]
+- Implement streaming responses from Groq API (stream: true).
+- Add progressive token rendering (typewriter effect) to Chat UI.
+- Ensure X-Ray context arrives *before* the stream starts.
+
+8️⃣ EXTERNAL APIs & ENDPOINTS
+1. Cloudflare Workers AI:
+   - Endpoint: https://api.cloudflare.com/client/v4/accounts/{ID}/ai/run/@cf/baai/bge-base-en-v1.5
+   - Headers: Authorization: Bearer {CF_API_TOKEN}
+2. Groq API:
+   - Endpoint: https://api.groq.com/openai/v1/chat/completions
+   - Model: llama-3.3-70b-versatile
+   - Headers: Authorization: Bearer {GROQ_API_KEY}
+
+9️⃣ MOCK DATA CONTRACT (FOR PHASE 1)
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  text: string;
+  xrayContext?: {
+    retrievedChunks: Array<{
+      id: string;
+      text: string;
+      similarity: number; // 0.0 to 1.0
+      source: string; // e.g., "Page 12"
+    }>;
+    inferenceTime: string; // e.g. "0.4s"
+  };
+}

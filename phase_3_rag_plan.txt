@@ -1,0 +1,70 @@
+# KORTEX PHASE 3: RAG LOGIC & INGESTION PIPELINE
+# TARGET: backend/src/services/ & backend/src/routes/
+# GOAL: Implement PDF ingestion and Retrieval-Augmented Generation (RAG).
+
+0️⃣ PREREQUISITES (VERIFY)
+- Ensure `pdf-parse` is installed in backend (`bun add pdf-parse`).
+- Ensure Supabase tables (`chunks`, `documents`) are created from Phase 2.
+
+1️⃣ STEP 1: THE CHUNKING ENGINE
+- Action: Create `backend/src/utils/chunker.ts`.
+- Logic:
+  - Function: `chunkText(text: string, maxTokens: number = 600, overlap: number = 100): string[]`
+  - Strategy:
+    1. Clean text (remove excessive newlines).
+    2. Split by sentences (using regex `/(?<=[.?!])\s+/`).
+    3. Accumulate sentences into a chunk until `maxTokens` is reached (approx 1 token = 4 chars).
+    4. When limit reached, push chunk, then backtrack by `overlap` characters to start next chunk.
+    5. *Crucial:* Return array of strings.
+
+2️⃣ STEP 2: THE INGESTION SERVICE
+- Action: Create `backend/src/services/ingestion.ts`.
+- Dependencies: `pdf-parse`, `chunker`, `cloudflare.ts`, `supabase.ts`.
+- Function: `processDocument(fileBuffer: Buffer, fileName: string, subjectId: string, userId: string)`
+- Flow:
+  1. **Parse:** `const data = await pdf(fileBuffer);` -> Get raw text.
+  2. **Record:** Insert into `documents` table via Supabase -> Get `documentId`.
+  3. **Chunk:** Call `chunkText(data.text)`.
+  4. **Embed:** Call `cloudflare.generateEmbeddings(chunks)` (Batch call!).
+  5. **Store:** Map embeddings + text to rows and `upsert` into `chunks` table.
+     - Metadata: `{ sourceLabel: "Page 1", chunkIndex: i }`.
+
+3️⃣ STEP 3: THE UPLOAD ROUTE (REAL IMPLEMENTATION)
+- Action: Update `backend/src/routes/upload.routes.ts`.
+- Middleware: Use `multer` (RAM storage) to handle file uploads.
+  - `bun add multer @types/multer`
+- Endpoint: `POST /`
+- Logic:
+  1. specificy `upload.single('file')`.
+  2. Check `req.file` exists.
+  3. Call `ingestion.processDocument(req.file.buffer, ...)`
+  4. Return `{ success: true, documentId: ... }`.
+
+4️⃣ STEP 4: THE RAG SERVICE (THE BRAIN)
+- Action: Create `backend/src/services/rag.ts`.
+- Dependencies: `cloudflare.ts`, `supabase.ts`, `groq.ts`.
+- Function: `queryRAG(question: string, subjectId: string)`
+- Flow:
+  1. **Embed Query:** `const vector = await cloudflare.generateEmbedding(question)`.
+  2. **Search:** Call Supabase RPC `match_chunks_by_subject` with `vector` and `subjectId`.
+     - Limit: 5 chunks.
+     - Threshold: 0.5.
+  3. **Construct Context:** Join retrieved chunks text with newlines.
+  4. **Prompting:**
+     - System Prompt: "You are a helpful study assistant. Answer strictly based on the provided context."
+     - User Prompt: `Context:\n${context}\n\nQuestion: ${question}`.
+  5. **Generate:** Call `groq.generateResponse(prompts)`.
+  6. **Return:** Object containing `{ answer, retrievedChunks }` (This feeds the X-Ray UI!).
+
+5️⃣ STEP 5: THE CHAT ROUTE (RAG INTEGRATION)
+- Action: Update `backend/src/routes/chat.routes.ts`.
+- Logic:
+  - Instead of calling Groq directly, call `ragService.queryRAG(message, subjectId)`.
+  - Return the full object (Answer + XRay Data).
+
+6️⃣ SUCCESS CRITERIA (VERIFICATION)
+- [ ] Upload a PDF (via Postman or Curl).
+- [ ] Verify rows appear in Supabase `chunks` table.
+- [ ] Ask a question about the PDF (via Postman).
+- [ ] Receive an answer based on the PDF.
+- [ ] Receive `retrievedChunks` in the response (X-Ray data).

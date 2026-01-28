@@ -1,0 +1,96 @@
+# KORTEX PHASE 1: FRONTEND VISUALIZATION & MOCKS
+# TARGET: frontend/ folder
+# GOAL: Build a high-fidelity, interactive "Shell" of the application using Mock Data.
+# STATUS: FINAL (Incorporating UX Best Practices)
+
+0️⃣ PREREQUISITES (VERIFY)
+- Ensure 'frontend/tsconfig.json' correctly maps "@shared/*" to "../shared/*".
+- Ensure Tailwind CSS is working.
+- Ensure 'lucide-react' or similar icon library is installed.
+
+1️⃣ STEP 1: UI-SPECIFIC TYPES
+- Action: Create `frontend/lib/types.ts` (or add to `shared` if preferred, but keep distinct from DB types).
+- Definition:
+  export interface RetrievedChunk {
+    id: string;
+    content: string;
+    similarity: number; // 0.0 to 1.0
+    sourceLabel: string; // e.g. "Page 12"
+  }
+- Update `ChatMessage` in `@shared/types` to use `xrayContext`:
+  xrayContext?: {
+    retrievedChunks: RetrievedChunk[];
+    inferenceTime: number;
+  };
+
+2️⃣ STEP 2: MOCK DATA LAYER
+- Action: Create `frontend/lib/mockData.ts`.
+- Content:
+  - Export `MOCK_SUBJECTS`: Array of 3 diverse subjects (e.g., "DSA", "System Design", "History").
+  - Export `MOCK_CHAT_HISTORY`: Array of messages.
+    - One 'assistant' message MUST have a populated `xrayContext`.
+    - Use distinct similarity scores (0.92, 0.85, 0.72) to test color coding logic.
+
+3️⃣ STEP 3: ATOMIC UI COMPONENTS
+Create these in `frontend/components/`:
+
+A. `ui/MessageSkeleton.tsx` (NEW)
+   - Visual: 3 gray pulsing bars (shimmer effect) to represent "Thinking...".
+   - Purpose: Displayed while waiting for the mock AI delay.
+
+B. `XRayPanel.tsx` (CRITICAL COMPONENT)
+   - Props: `retrievedChunks: RetrievedChunk[]`, `inferenceTime: number`
+   - Behavior: Accordion/collapsible panel. Default collapsed.
+   - Visuals:
+     - Header: "🔍 Kortex Vision (Processed in 0.4s)"
+     - Legend: Small dot indicators (🟢 >0.9, 🟡 >0.8, ⚪ <0.8).
+     - Body: List of chunks with color-coded borders based on similarity.
+     - Content: Display `sourceLabel` clearly (e.g., [Page 12]).
+
+C. `ChatMessage.tsx`
+   - Props: `message: ChatMessage`
+   - Logic:
+     - Render User text right-aligned (Blue bubble).
+     - Render AI text left-aligned (Gray bubble).
+     - If `message.xrayContext` exists, render `<XRayPanel />` below the text.
+
+D. `SubjectCard.tsx`
+   - Display name, document count, and a "Chat Now" button.
+
+4️⃣ STEP 4: PAGE CONSTRUCTION & LOGIC
+Build these routes in `frontend/app/`:
+
+A. `/dashboard/[subjectId]` (The Chat Room)
+   - Layout:
+     - Left: Chat Area (Messages List).
+     - Right: Document Sidebar (Static mock list of PDFs).
+   - State Logic (Crucial):
+     - `messages`: Array of ChatMessage.
+     - `isThinking`: Boolean.
+     - `inputValue`: String.
+   - Interaction Flow:
+     1. User types and hits Enter.
+     2. Disable Input field immediately.
+     3. Append User Message to state.
+     4. Set `isThinking = true` (Show `<MessageSkeleton />`).
+     5. Trigger `setTimeout` for 1500ms (Fake Delay).
+     6. After delay:
+        - Set `isThinking = false`.
+        - Enable Input field.
+        - Append Mock AI Message (with `xrayContext`) to state.
+
+B. `/login` & `/dashboard`
+   - Simple landing page and grid view of subjects (using `SubjectCard`).
+
+5️⃣ STEP 5: UPLOAD MODAL (VISUAL)
+- Create `components/UploadModal.tsx`.
+- Visual: Drag & Drop zone.
+- Interaction: Dropping a file triggers a "fake" progress bar animation (0% -> 100%) to demonstrate the ingestion flow to the user.
+
+6️⃣ SUCCESS CRITERIA
+- [ ] User can send a message.
+- [ ] Input locks while "AI is thinking".
+- [ ] "Thinking" state shows a skeleton loader, not just text.
+- [ ] AI response appears with the "Kortex Vision" accordion.
+- [ ] Clicking "Kortex Vision" reveals chunks.
+- [ ] Chunks are color-coded by similarity (Green/Yellow/Gray).

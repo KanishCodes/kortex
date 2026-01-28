@@ -1,0 +1,45 @@
+# node_modules
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Vercel
+.vercel
+
+# Environment variables
+.env
+.env.local
+.env*.local
+!.env.example
+
+# TypeScript
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Bun
+.bun/
+bun.lockb
+
+# Testing
+coverage/
+
+# Logs
+logs/
+*.log

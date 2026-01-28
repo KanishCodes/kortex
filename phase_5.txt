@@ -1,0 +1,29 @@
+# KORTEX PHASE 5: AUTHENTICATION & IDENTITY MAPPING
+# TARGET: frontend/ & backend/ + Google Cloud Console
+# GOAL: Replace 'DEMO_USER_ID' with real Google OAuth identities.
+
+0️⃣ STEP 0: GOOGLE CLOUD SETUP (EXTERNAL)
+- Action: Go to console.cloud.google.com -> New Project "Kortex".
+- Action: APIs & Services -> Credentials -> Create OAuth Client ID.
+  - Type: Web Application.
+  - Authorized Origins: `http://localhost:3000`
+  - Authorized Redirect URIs: `http://localhost:3000/api/auth/callback/google`
+- Action: Copy `Client ID` and `Client Secret`.
+- Action: Add to `frontend/.env.local`:
+  GOOGLE_CLIENT_ID=...
+  GOOGLE_CLIENT_SECRET=...
+  NEXTAUTH_SECRET=run_openssl_rand_base64_32_here
+  NEXTAUTH_URL=http://localhost:3000
+
+1️⃣ STEP 1: BACKEND IDENTITY INFRASTRUCTURE
+We need a table to map Emails to UUIDs.
+- Action: Run SQL in Supabase:
+  ```sql
+  create table users (
+    id uuid primary key default gen_random_uuid(),
+    email text unique not null,
+    name text,
+    created_at timestamp default now()
+  );
+  -- Add foreign key constraints to existing tables (Optional but good)
+  alter table subjects add constraint fk_user foreign key (user_id) references users(id);
