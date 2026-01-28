@@ -1,6 +1,7 @@
 FROM oven/bun:1
 WORKDIR /app
-COPY package.json bun.lockb ./
+COPY package.json ./
+COPY bun.lock* ./
 RUN bun install --production
 COPY . .
 EXPOSE 4000
