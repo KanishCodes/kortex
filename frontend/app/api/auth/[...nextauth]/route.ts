@@ -35,7 +35,7 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account: _account, profile: _profile }) {
       // When user signs in, get or create them in our database
       if (user.email) {
         try {
