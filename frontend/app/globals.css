@@ -24,3 +24,44 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Custom animations */
+@keyframes pulse-slow {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Custom scrollbar - subtle and minimal */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #27272a transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 10px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}

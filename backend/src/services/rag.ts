@@ -66,12 +66,27 @@ export async function queryRAG(
     if (!chunks || chunks.length === 0) {
       console.log('     ⚠️  No relevant chunks found');
       return {
-        answer: "I couldn't find any relevant information in your uploaded documents to answer this question. Please make sure you've uploaded documents related to this topic.",
+        answer: "⚠️ **I couldn't find this information in your uploaded documents.**\n\nTry:\n- Uploading more relevant documents\n- Rephrasing your question\n- Asking about topics covered in your materials",
         retrievedChunks: []
       };
     }
 
-    console.log(`     ✅ Found ${chunks.length} relevant chunks`);
+    // Check if all chunks have low similarity (potential hallucination risk)
+    const maxSimilarity = Math.max(...chunks.map((c: any) => c.similarity));
+    if (maxSimilarity < 0.5) {
+      console.log(`     ⚠️  Low confidence (max similarity: ${maxSimilarity.toFixed(3)})`);
+      return {
+        answer: "⚠️ **I found some related content, but I'm not confident it answers your question.**\n\nThe information in your documents might not cover this topic in detail. Try:\n- Uploading more specific documents\n- Asking a different question\n- Rephrasing to match the content in your materials",
+        retrievedChunks: chunks.map((chunk: any) => ({
+          id: chunk.id,
+          content: chunk.content,
+          similarity: chunk.similarity,
+          metadata: chunk.metadata
+        }))
+      };
+    }
+
+    console.log(`     ✅ Found ${chunks.length} relevant chunks (max similarity: ${maxSimilarity.toFixed(3)})`);
 
     // Step 3: Construct context from retrieved chunks
     const context = chunks
@@ -83,14 +98,23 @@ export async function queryRAG(
     console.log(`     📝 Context length: ${context.length} characters`);
 
     // Step 4: Build prompt with system instructions and context
-    const systemPrompt = `You are KORTEX, a helpful study assistant. Your role is to answer questions based STRICTLY on the provided document context.
+    const systemPrompt = `You are KORTEX, a helpful study assistant. Your role is to help students learn from their uploaded documents.
+
+IMPORTANT CAPABILITIES:
+1. Answer factual questions based on the context
+2. CREATE study materials (practice questions, summaries, examples) USING the context
+3. Explain concepts from the documents in different ways
+4. Generate quizzes, flashcards, or exam questions BASED ON the material
 
 RULES:
-1. Only use information from the context below
-2. If the context doesn't contain enough information, say so clearly
-3. Be concise but comprehensive
-4. Use bullet points or numbered lists when appropriate
-5. If asked about something not in the context, politely state you can only answer from uploaded documents`;
+1. Always base your responses on the provided context
+2. For generative requests (create questions, make a summary, etc.), USE the context to generate appropriate content
+3. For factual questions, only answer if the information is in the context
+4. Be educational and student-focused - your goal is to help them learn
+5. Use markdown formatting (bold, lists, code blocks) to make responses clear
+6. If context is insufficient for the specific request, explain what's missing
+
+Remember: "Create practice questions" means generate questions FROM the context, not find questions IN the context.`;
 
     const userPrompt = `Context from uploaded documents:
 

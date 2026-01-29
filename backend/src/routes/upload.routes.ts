@@ -2,6 +2,7 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { processDocument } from '../services/ingestion';
+import { logActivity } from '../services/activity';
 
 const router = Router();
 
@@ -51,6 +52,12 @@ router.post('/', upload.single('file'), async (req: Request, res: Response) => {
       subjectId,
       userId
     );
+
+    // Log activity
+    await logActivity(userId, 'upload_document', result.documentId, {
+      title: result.title,
+      subjectId: subjectId
+    });
 
     res.status(200).json({
       success: true,

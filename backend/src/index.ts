@@ -35,10 +35,15 @@ app.get('/health', (_req: Request, res: Response) => {
 });
 
 // API Routes
+import documentRoutes from './routes/document.routes';
+import dashboardRoutes from './routes/dashboard.routes';
+// ...
 app.use('/api/users', userRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.listen(PORT, () => {
   console.log(`🚀 KORTEX Backend running on http://localhost:${PORT}`);

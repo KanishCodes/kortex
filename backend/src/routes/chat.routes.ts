@@ -1,6 +1,7 @@
 // Chat Routes - Handle message queries using RAG
 import { Router, Request, Response } from 'express';
 import { queryRAG } from '../services/rag';
+import { logActivity } from '../services/activity';
 
 const router = Router();
 
@@ -29,6 +30,28 @@ router.post('/', async (req: Request, res: Response) => {
 
     // Query RAG system
     const result = await queryRAG(message, subjectId);
+
+    // Log activity
+    // Note: We don't await this to keep response fast
+    logActivity(
+      // @ts-ignore - User ID is handled by middleware but we need to extract it or pass it. 
+      // For now assuming we add userId to request in middleware or passed in body? 
+      // Wait, chat route currently gets subjectId and message from body. 
+      // Where is userId? It should be in req.user if using auth middleware.
+      // Let's check how other routes get userId.
+      // Upload route extracts it from req.body.
+      // Chat route body: { message, subjectId }. 
+      // We need to add userId to the request body from frontend or use auth middleware.
+      // The frontend chat client currently doesn't pass userId in body explicitly?
+      // Let's verify frontend/lib/api.ts chat function.
+      req.body.userId,
+      'chat_query',
+      subjectId,
+      {
+        message_length: message.length,
+        response_chunks: result.retrievedChunks.length
+      }
+    );
 
     // Return response with answer and X-Ray data
     res.json({

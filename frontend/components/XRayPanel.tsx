@@ -1,8 +1,8 @@
-// XRayPanel - Visualizes RAG retrieval context
+// XRayPanel - Premium RAG context visualization
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, Eye, Zap } from 'lucide-react';
+import { ChevronDown, Eye, Copy, Check } from 'lucide-react';
 import type { RetrievedChunk } from '@/lib/types';
 
 interface XRayPanelProps {
@@ -10,42 +10,49 @@ interface XRayPanelProps {
   inferenceTime: number;
 }
 
-export default function XRayPanel({ retrievedChunks, inferenceTime }: XRayPanelProps) {
+export default function XRayPanel({ retrievedChunks }: XRayPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const getSimilarityColor = (similarity: number) => {
-    if (similarity > 0.9) return 'border-green-500 bg-green-50 dark:bg-green-950';
-    if (similarity > 0.8) return 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950';
-    return 'border-gray-400 bg-gray-50 dark:bg-gray-900';
+    if (similarity > 0.9) return 'border-green-500/50 bg-green-500/5';
+    if (similarity > 0.8) return 'border-yellow-500/50 bg-yellow-500/5';
+    return 'border-zinc-700 bg-zinc-800/30';
   };
 
-  const getSimilarityDot = (similarity: number) => {
-    if (similarity > 0.9) return '🟢';
-    if (similarity > 0.8) return '🟡';
-    return '⚪';
+  const getSimilarityBadge = (similarity: number) => {
+    if (similarity > 0.9) return { color: 'bg-green-500', label: 'High' };
+    if (similarity > 0.8) return { color: 'bg-yellow-500', label: 'Medium' };
+    return { color: 'bg-zinc-600', label: 'Low' };
+  };
+
+  const handleCopyChunk = (id: string, content: string) => {
+    navigator.clipboard.writeText(content);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
   return (
-    <div className="mt-3 border border-purple-200 dark:border-purple-800 rounded-lg overflow-hidden bg-purple-50/50 dark:bg-purple-950/20">
+    <div className="mt-3 border border-purple-500/20 rounded-xl overflow-hidden bg-purple-500/5 backdrop-blur-sm">
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
+        className="w-full px-4 py-3 flex items-center justify-between hover:bg-purple-500/10 transition-colors group"
       >
-        <div className="flex items-center gap-2">
-          <Eye className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-          <span className="font-medium text-sm text-purple-900 dark:text-purple-100">
-            🔍 Kortex Vision
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center group-hover:bg-purple-500/30 transition-colors">
+            <Eye className="w-4 h-4 text-purple-400" />
+          </div>
+          <span className="font-semibold text-sm text-purple-100">
+            🔍 Context Sources
           </span>
-          <span className="text-xs text-purple-600 dark:text-purple-400 flex items-center gap-1">
-            <Zap className="w-3 h-3" />
-            {inferenceTime.toFixed(2)}s
+          <span className="text-xs text-purple-400 bg-purple-500/10 px-2 py-1 rounded-full">
+            {retrievedChunks.length} {retrievedChunks.length === 1 ? 'chunk' : 'chunks'}
           </span>
         </div>
         <ChevronDown
-          className={`w-4 h-4 text-purple-600 dark:text-purple-400 transition-transform ${
-            isExpanded ? 'rotate-180' : ''
-          }`}
+          className={`w-4 h-4 text-purple-400 transition-transform ${isExpanded ? 'rotate-180' : ''
+            }`}
         />
       </button>
 
@@ -53,37 +60,59 @@ export default function XRayPanel({ retrievedChunks, inferenceTime }: XRayPanelP
       {isExpanded && (
         <div className="px-4 pb-4 space-y-3">
           {/* Legend */}
-          <div className="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-400 pb-2 border-b border-purple-200 dark:border-purple-800">
-            <span className="flex items-center gap-1">
-              🟢 High (&gt;0.9)
+          <div className="flex items-center gap-4 text-xs text-zinc-400 pb-3 border-b border-purple-500/20">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+              High (&gt;90%)
             </span>
-            <span className="flex items-center gap-1">
-              🟡 Medium (&gt;0.8)
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+              Medium (&gt;80%)
             </span>
-            <span className="flex items-center gap-1">
-              ⚪ Low (&lt;0.8)
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-zinc-600"></span>
+              Low (&lt;80%)
             </span>
           </div>
 
           {/* Chunks */}
-          {retrievedChunks.map((chunk) => (
-            <div
-              key={chunk.id}
-              className={`border-l-4 p-3 rounded-r ${getSimilarityColor(chunk.similarity)}`}
-            >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                  {chunk.sourceLabel}
-                </span>
-                <span className="text-xs font-mono bg-white dark:bg-gray-800 px-2 py-0.5 rounded">
-                  {getSimilarityDot(chunk.similarity)} {(chunk.similarity * 100).toFixed(1)}%
-                </span>
+          {retrievedChunks.map((chunk) => {
+            const badge = getSimilarityBadge(chunk.similarity);
+            return (
+              <div
+                key={chunk.id}
+                className={`relative border rounded-xl p-4 ${getSimilarityColor(chunk.similarity)} group hover:border-purple-500/40 transition-all`}
+              >
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <div className={`w-2 h-2 rounded-full ${badge.color} flex-shrink-0`}></div>
+                    <span className="text-xs font-semibold text-zinc-300 truncate">
+                      {chunk.sourceLabel}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-[10px] font-mono bg-zinc-800 px-2 py-1 rounded-md text-zinc-400 border border-white/10">
+                      {(chunk.similarity * 100).toFixed(1)}%
+                    </span>
+                    <button
+                      onClick={() => handleCopyChunk(chunk.id, chunk.content)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 hover:bg-white/10 rounded-lg"
+                      title="Copy chunk"
+                    >
+                      {copiedId === chunk.id ? (
+                        <Check className="w-3.5 h-3.5 text-green-400" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  {chunk.content}
+                </p>
               </div>
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                {chunk.content}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -8,6 +8,13 @@ export interface Subject {
   id: string;
   name: string;
   created_at: string;
+  document_count?: number;
+}
+
+export interface Document {
+  id: string;
+  title: string;
+  created_at: string;
 }
 
 export interface ChatMessage {
@@ -92,6 +99,20 @@ export async function createSubject(userId: string, name: string): Promise<Subje
 }
 
 /**
+ * Update a subject's name
+ */
+export async function updateSubject(userId: string, subjectId: string, name: string): Promise<Subject> {
+  const response = await fetch(`${API_URL}/subjects/${subjectId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, name }),
+  });
+
+  const data = await handleResponse<{ success: boolean; subject: Subject }>(response);
+  return data.subject;
+}
+
+/**
  * Delete a subject
  */
 export async function deleteSubject(userId: string, subjectId: string): Promise<void> {
@@ -129,6 +150,25 @@ export async function uploadDocument(
   });
 
   return handleResponse<UploadResponse>(response);
+}
+
+/**
+ * Get all documents for a subject
+ */
+export async function getDocuments(subjectId: string): Promise<Document[]> {
+  const response = await fetch(`${API_URL}/documents?subjectId=${subjectId}`);
+  const data = await handleResponse<{ success: boolean; documents: Document[] }>(response);
+  return data.documents;
+}
+
+/**
+ * Delete a document and its embeddings
+ */
+export async function deleteDocument(documentId: string): Promise<void> {
+  const response = await fetch(`${API_URL}/documents/${documentId}`, {
+    method: 'DELETE',
+  });
+  await handleResponse<{ success: boolean }>(response);
 }
 
 // ============================================================================
@@ -169,4 +209,33 @@ export async function healthCheck(): Promise<boolean> {
 }
 
 // Export API error for error handling in components
+// ============================================================================
+// DASHBOARD & ANALYTICS
+// ============================================================================
+
+export interface ActivityLog {
+  id: string;
+  subject: string;
+  topic: string;
+  time: string;
+}
+
+export interface DashboardStats {
+  subjects: number;
+  documents: number;
+  queries: number;
+}
+
+export async function getDashboardStats(userId: string): Promise<DashboardStats> {
+  const response = await fetch(`${API_URL}/dashboard/stats?userId=${userId}`);
+  const data = await handleResponse<{ success: boolean; stats: DashboardStats }>(response);
+  return data.stats;
+}
+
+export async function getRecentActivity(userId: string): Promise<ActivityLog[]> {
+  const response = await fetch(`${API_URL}/dashboard/activity?userId=${userId}`);
+  const data = await handleResponse<{ success: boolean; activities: ActivityLog[] }>(response);
+  return data.activities;
+}
+
 export { APIError };

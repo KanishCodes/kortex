@@ -1,6 +1,7 @@
 // Subject Routes - Handle subject management
 import { Router, Request, Response } from 'express';
 import { supabase } from '../services/supabase';
+import { logActivity } from '../services/activity';
 
 const router = Router();
 
@@ -84,6 +85,11 @@ router.post('/', async (req: Request, res: Response) => {
 
     console.log(`   ✅ Created subject ID: ${subject.id}`);
 
+    // Log activity
+    await logActivity(userId, 'create_subject', subject.id, {
+      name: subject.name
+    });
+
     res.status(201).json({
       success: true,
       subject: {
@@ -97,6 +103,73 @@ router.post('/', async (req: Request, res: Response) => {
     console.error('❌ Create subject error:', error.message);
     res.status(500).json({
       error: 'Failed to create subject',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * PUT /api/subjects/:id
+ * Update a subject's name
+ */
+router.put('/:id', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { userId, name } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({
+        error: 'Invalid request: userId is required'
+      });
+    }
+
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({
+        error: 'Invalid request: name is required'
+      });
+    }
+
+    console.log(`✏️  Updating subject: ${id} to "${name}"`);
+
+    // Update subject (ensure user owns it)
+    const { data: subject, error } = await supabase
+      .from('subjects')
+      .update({ name: name.trim() })
+      .eq('id', id)
+      .eq('user_id', userId) // Ensure user owns this subject
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to update subject: ${error.message}`);
+    }
+
+    if (!subject) {
+      return res.status(404).json({
+        error: 'Subject not found or you do not have permission to update it'
+      });
+    }
+
+    console.log(`   ✅ Subject updated`);
+
+    // Log activity
+    await logActivity(userId, 'update_subject', subject.id, {
+      name: subject.name
+    });
+
+    res.json({
+      success: true,
+      subject: {
+        id: subject.id,
+        name: subject.name,
+        created_at: subject.created_at
+      }
+    });
+
+  } catch (error: any) {
+    console.error('❌ Update subject error:', error.message);
+    res.status(500).json({
+      error: 'Failed to update subject',
       message: error.message
     });
   }
